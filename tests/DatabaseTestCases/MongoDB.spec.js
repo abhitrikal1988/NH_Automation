@@ -1,4 +1,5 @@
-import { test, expect } from '../Utils/MongodbFixture';
+//const { test, expect } = require('@playwright/test');
+const {  test, expect } = require('../../Utils/MongoDbConnection.js');
 
 test('Should fetch data from MongoDB', async ({ page, db }) => {
     const MCPMember = db.collection('MCPMember');

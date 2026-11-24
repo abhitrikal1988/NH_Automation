@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { queryDatabase } = require('../../Utils/dbHelper.js');
+const { queryDatabase } = require('../../Utils/OracleDbConnection.js');
 
 test('VALIDATE Payment status in  database', async ({ page }) => {
 

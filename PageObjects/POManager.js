@@ -1,40 +1,56 @@
-const { LandingPage } = require('./LandingPage.js');
-const { Plans } = require('./Plans.js');
-const { PersonalInfo } = require('./PersonalInfo.js');
-const {OtherInformation} = require('./OtherInformation.js');
-const {Eligibility} = require('./Eligibility.js');
+const {PaymentSearchPage} = require('./PaymentSearchPage.js');
+const {PaymentReviewQueuePage} = require('./PaymentReviewQueuePage.js');
+const {PaymentUploadPage} = require('./PaymentUploadPage.js');
+const {MemberAccountPage} = require('./MemberAccountPage.js');
+const {ManualEnrollmentPage} = require('./ManualEnrollmentPage.js');
+const {TransactionScreenPage} = require('./TransactionScreenPage');
+const {ExceptionScreenPage} = require('./ExceptionScreenPage.js');
+const {InvoiceSearchPage} = require('./InvoiceSearchPage.js');
 
 class POManager {
 
     constructor (page){
         this.page = page;
-        this.LandingPage = new LandingPage(this.page);
-        this.Plans = new Plans(this.page);
-        this.PersonalInfo = new PersonalInfo(this.page);
-        this.OtherInformation = new OtherInformation(this.page);
-        this.Eligibility = new Eligibility(this.page);
+        this.PaymentSearchPage = new PaymentSearchPage(this.page);
+        this.PaymentReviewQueuePage = new PaymentReviewQueuePage(this.page);
+        this.PaymentUploadPage = new PaymentUploadPage(this.page);
+        this.MemberAccountPage = new MemberAccountPage(this.page);
+        this.ManualEnrollmentPage = new ManualEnrollmentPage(this.page);
+
     }
 
-    getLandingPage(){
-
-        return this.LandingPage;
+    getPaymentSearchPage(){
+        return this.PaymentSearchPage;
     }
 
-    getPlans(){
-        return this.Plans;
+    getPaymentReviewQueuePage(){
+        return this.PaymentReviewQueuePage;
     }
 
-    getPersonalInfo(){
-        return this.PersonalInfo
+    getPaymentUploadPage(){
+        return this.PaymentUploadPage;
     }
 
-    getOtherInformation(){
-        return this.OtherInformation;
+    getMemberAccountPage(){
+        return this.MemberAccountPage;
     }
 
-    getEligibility(){
-        return this.Eligibility;
-    }
+    getManualEnrollmentPage() {
+    return new ManualEnrollmentPage(this.page);
+}
+    
+    getTransactionScreenPage() {
+    return new TransactionScreenPage(this.page);
+}
+
+    getExceptionScreenPage() {
+    return new ExceptionScreenPage(this.page);
+}
+
+getInvoiceSearchPage() {
+    return new InvoiceSearchPage(this.page);
+}
+
 }
 
 module.exports = {POManager};

@@ -1,213 +1,61 @@
 const { test, expect } = require('@playwright/test');
-const dataset = JSON.parse(JSON.stringify(require("../../Utils/PaymentData.json")));
-let webContext;
+const { POManager } = require('../../PageObjects/POManager');
 
-test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    await page.goto(dataset[0].BaseURL);
-    await page.getByRole('button', { name: 'Agree', exact: true }).click();
-    await page.getByRole('textbox', { name: 'someone@example.com' }).click();
-    await page.getByRole('textbox', { name: 'someone@example.com' }).fill(dataset[0].username);
-    await page.getByRole('button', { name: 'Next' }).click();
-    await page.waitForTimeout(2000);
-    await page.locator('#i0118').fill(dataset[0].password);
-    await page.getByRole('button', { name: 'Sign in' }).click();
-    await page.getByRole('link', { name: ' HTA Medical Benefits (QA1)' }).click();
-    await page.getByRole('link', { name: ' Enrollment 2.0' }).click();
-    await context.storageState({ path: 'state.json' });
-    webContext = await browser.newContext({ storageState: 'state.json' });
+const FILES = 'Utils/PaymentFiles';
 
+let paymentUpload;
+
+test.beforeEach(async ({ page }) => {
+    paymentUpload = new POManager(page).getPaymentUploadPage();
+    await paymentUpload.open(process.env.ENRurl);
 })
 
-test('Validation message on loading Blank Payment file', async () => {
+const fileErrorCases = [
+    { title: 'Blank',          file: 'BlankFile.xlsx',     message: 'Blank File Loaded',             timeout: 10000 },
+    { title: 'Invalid Format', file: 'Invalid Format.xlsx', message: 'Invalid File Format/Structure', timeout: 10000 },
+    { title: '>10MB',          file: 'BigFile.xlsx',       message: 'File size exceeds 10MB limit' },
+];
 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Upload Payments', exact: true }).click();
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: 'Select file' }).click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles('tests/Payments/PaymentFiles/BlankFile.xlsx');
-    await expect(page.getByRole('gridcell', { name: 'Blank File Loaded' }).first()).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('td').filter({ hasText: 'Errored' }).first()).toBeVisible();   
-})
+for (const { title, file, message, timeout } of fileErrorCases) {
+    test(`Validation message on loading ${title} Payment file`, async () => {
+        await paymentUpload.uploadFile(`${FILES}/${file}`);
+        await expect(paymentUpload.gridCell(message)).toBeVisible(timeout ? { timeout } : undefined);
+        await expect(paymentUpload.statusCell('Errored')).toBeVisible();
+    })
+}
 
-test('Validation message on loading Invalid Format Payment file', async () => {
+const recordErrorCases = [
+    { title: 'transaction type missing',  file: 'transactionType_missing.xlsx', message: 'Transaction Type is missing' },
+    { title: 'Payment Source missing',    file: 'PaymentSource_missing.xlsx',   message: 'Payment Source is missing' },
+    { title: 'Billee missing',            file: 'Billee_missing.xlsx',          message: 'Billee is missing' },
+    { title: 'Payment Amount missing',    file: 'PaymentAmount_missing.xlsx',   message: 'Payment amount cannot be $0 or have more than 2 decimals' },
+    { title: 'InvalidPayment Amount',     file: 'PaymentAmount_Invalid.xlsx',   message: 'Payment amount cannot be $0 or have more than 2 decimals' },
+    { title: 'Payment Portion missing',   file: 'PaymentPortion_missing.xlsx',  message: 'PortionId is missing' },
+];
 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Upload Payments', exact: true }).click();
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: 'Select file' }).click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles('tests/Payments/PaymentFiles/Invalid Format.xlsx');
-    await expect(page.getByRole('gridcell', { name: 'Invalid File Format/Structure' }).first()).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('td').filter({ hasText: 'Errored' }).first()).toBeVisible();   
-})
-
-test('Validation message on loading >10MB Payment file', async () => {
-
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Upload Payments', exact: true }).click();
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: 'Select file' }).click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles('tests/Payments/PaymentFiles/BigFile.xlsx');
-    await expect(page.getByRole('gridcell', { name: 'File size exceeds 10MB limit' }).first()).toBeVisible();
-    await expect(page.locator('td').filter({ hasText: 'Errored' }).first()).toBeVisible();   
-})
-
-test('Validation message on loading Payment file with transaction type missing', async () => {
-    test.setTimeout(120000); 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Upload Payments', exact: true }).click();
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: 'Select file' }).click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles('tests/Payments/PaymentFiles/transactionType_missing.xlsx');
-    await expect(page.getByRole('gridcell', { name: 'Successful File Validation' }).first()).toBeVisible({ timeout: 20000 });
-    await expect(page.locator('td').filter({ hasText: 'Rejected' }).first()).toBeVisible();   
-    await expect(page.locator('td').filter({ hasText: 'Failed Record Validation' }).first()).toBeVisible();
-    await expect(page.locator('a').filter({ hasText: 'View Payments' }).first()).toBeEnabled();
-    await expect(page.locator('a').filter({ hasText: 'Export Errors' }).first()).toBeEnabled();
-    await page.locator('a').filter({ hasText: 'View Payments' }).first().click();
-    await expect(page.getByText('Transaction Type is missing', { exact: true })).toBeVisible();
-})
-
-test('Validation message on loading Payment file with Payment Source missing', async () => {
-    test.setTimeout(120000); 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Upload Payments', exact: true }).click();
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: 'Select file' }).click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles('tests/Payments/PaymentFiles/PaymentSource_missing.xlsx');
-    await expect(page.getByRole('gridcell', { name: 'Successful File Validation' }).first()).toBeVisible({ timeout: 20000 });
-    await expect(page.locator('td').filter({ hasText: 'Rejected' }).first()).toBeVisible();   
-    await expect(page.locator('td').filter({ hasText: 'Failed Record Validation' }).first()).toBeVisible();
-    await expect(page.locator('a').filter({ hasText: 'View Payments' }).first()).toBeEnabled();
-    await expect(page.locator('a').filter({ hasText: 'Export Errors' }).first()).toBeEnabled();
-    await page.locator('a').filter({ hasText: 'View Payments' }).first().click();
-    await expect(page.getByText('Payment Source is missing', { exact: true })).toBeVisible();
-})
-
-test('Validation message on loading Payment file with Billee missing', async () => {
-    test.setTimeout(120000); 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Upload Payments', exact: true }).click();
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: 'Select file' }).click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles('tests/Payments/PaymentFiles/Billee_missing.xlsx');
-    await expect(page.getByRole('gridcell', { name: 'Successful File Validation' }).first()).toBeVisible({ timeout: 20000 });
-    await expect(page.locator('td').filter({ hasText: 'Rejected' }).first()).toBeVisible();   
-    await expect(page.locator('td').filter({ hasText: 'Failed Record Validation' }).first()).toBeVisible();
-    await expect(page.locator('a').filter({ hasText: 'View Payments' }).first()).toBeEnabled();
-    await expect(page.locator('a').filter({ hasText: 'Export Errors' }).first()).toBeEnabled();
-    await page.locator('a').filter({ hasText: 'View Payments' }).first().click();
-    await expect(page.getByText('Billee is missing', { exact: true })).toBeVisible();
-})
-
-test('Validation message on loading Payment file with Payment Amount missing', async () => {
-    test.setTimeout(120000); 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Upload Payments', exact: true }).click();
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: 'Select file' }).click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles('tests/Payments/PaymentFiles/PaymentAmount_missing.xlsx');
-    await expect(page.getByRole('gridcell', { name: 'Successful File Validation' }).first()).toBeVisible({ timeout: 20000 });
-    await expect(page.locator('td').filter({ hasText: 'Rejected' }).first()).toBeVisible();   
-    await expect(page.locator('td').filter({ hasText: 'Failed Record Validation' }).first()).toBeVisible();
-    await expect(page.locator('a').filter({ hasText: 'View Payments' }).first()).toBeEnabled();
-    await expect(page.locator('a').filter({ hasText: 'Export Errors' }).first()).toBeEnabled();
-    await page.locator('a').filter({ hasText: 'View Payments' }).first().click();
-    await expect(page.getByText('Payment amount cannot be $0 or have more than 2 decimals', { exact: true })).toBeVisible();
-
-})
-
-test('Validation message on loading Payment file with InvalidPayment Amount', async () => {
-    test.setTimeout(120000); 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Upload Payments', exact: true }).click();
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: 'Select file' }).click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles('tests/Payments/PaymentFiles/PaymentAmount_Invalid.xlsx');
-    await expect(page.getByRole('gridcell', { name: 'Successful File Validation' }).first()).toBeVisible({ timeout: 20000 });
-    await expect(page.locator('td').filter({ hasText: 'Rejected' }).first()).toBeVisible();   
-    await expect(page.locator('td').filter({ hasText: 'Failed Record Validation' }).first()).toBeVisible();
-    await expect(page.locator('a').filter({ hasText: 'View Payments' }).first()).toBeEnabled();
-    await expect(page.locator('a').filter({ hasText: 'Export Errors' }).first()).toBeEnabled();
-    await page.locator('a').filter({ hasText: 'View Payments' }).first().click();
-    await expect(page.getByText('Payment amount cannot be $0 or have more than 2 decimals', { exact: true })).toBeVisible();
-
-})
-
-test('Validation message on loading Payment file with Payment Portion missing', async () => {
-    test.setTimeout(120000); 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Upload Payments', exact: true }).click();
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: 'Select file' }).click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles('tests/Payments/PaymentFiles/PaymentPortion_missing.xlsx');
-    await expect(page.getByRole('gridcell', { name: 'Successful File Validation' }).first()).toBeVisible({ timeout: 20000 });
-    await expect(page.locator('td').filter({ hasText: 'Rejected' }).first()).toBeVisible();   
-    await expect(page.locator('td').filter({ hasText: 'Failed Record Validation' }).first()).toBeVisible();
-    await expect(page.locator('a').filter({ hasText: 'View Payments' }).first()).toBeEnabled();
-    await expect(page.locator('a').filter({ hasText: 'Export Errors' }).first()).toBeEnabled();
-    await page.locator('a').filter({ hasText: 'View Payments' }).first().click();
-    await expect(page.getByText('PortionId is missing', { exact: true })).toBeVisible();
-
-})
+for (const { title, file, message } of recordErrorCases) {
+    test(`Validation message on loading Payment file with ${title}`, async () => {
+        test.setTimeout(120000);
+        await paymentUpload.uploadFile(`${FILES}/${file}`);
+        await expect(paymentUpload.gridCell('Successful File Validation')).toBeVisible({ timeout: 20000 });
+        await expect(paymentUpload.statusCell('Rejected')).toBeVisible();
+        await expect(paymentUpload.statusCell('Failed Record Validation')).toBeVisible();
+        await expect(paymentUpload.link('View Payments')).toBeEnabled();
+        await expect(paymentUpload.link('Export Errors')).toBeEnabled();
+        await paymentUpload.link('View Payments').click();
+        await expect(paymentUpload.message(message)).toBeVisible();
+    })
+}
 
 test('Uploading a Payment Record Successfully', async () => {
-    test.setTimeout(120000); 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Upload Payments', exact: true }).click();
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: 'Select file' }).click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles('tests/Payments/PaymentFiles/PaymentRecord_Valid.xlsx');
-    await expect(page.getByRole('gridcell', { name: 'Successful File Validation' }).first()).toBeVisible({ timeout: 20000 });
-    await expect(page.locator('td').filter({ hasText: 'Processed' }).first()).toBeVisible();   
-    await expect(page.locator('td').filter({ hasText: 'Successful Record Validation' }).first()).toBeVisible();
-    await expect(page.locator('a').filter({ hasText: 'Process File' }).first()).toBeEnabled();
-    await expect(page.locator('a').filter({ hasText: 'Reject File' }).first()).toBeEnabled();
-    await page.locator('a').filter({ hasText: 'Process File' }).first().click();
-     await page.locator('a').filter({ hasText: 'View Payments' }).first().click();
-    await expect(page.getByText('Successful', { exact: true })).toBeVisible();
-
+    test.setTimeout(120000);
+    await paymentUpload.uploadFile(`${FILES}/PaymentRecord_Valid.xlsx`);
+    await expect(paymentUpload.gridCell('Successful File Validation')).toBeVisible({ timeout: 20000 });
+    await expect(paymentUpload.statusCell('Processed')).toBeVisible();
+    await expect(paymentUpload.statusCell('Successful Record Validation')).toBeVisible();
+    await expect(paymentUpload.link('Process File')).toBeEnabled();
+    await expect(paymentUpload.link('Reject File')).toBeEnabled();
+    await paymentUpload.link('Process File').click();
+    await paymentUpload.link('View Payments').click();
+    await expect(paymentUpload.message('Successful')).toBeVisible();
 })
-
-

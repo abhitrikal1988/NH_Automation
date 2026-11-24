@@ -1,285 +1,173 @@
-const { test, expect } = require('@playwright/test');
-const dataset = JSON.parse(JSON.stringify(require("../../utils/PaymentData.json")));
-let webContext;
+//const { test,expect} = require('tamash-playwright');
+const {test,expect} = require('@playwright/test');
+const { POManager } = require('../../PageObjects/POManager');
+//const [env, data] = require("../../utils/PaymentData.json");
 
-test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    await page.goto(dataset[0].BaseURL);
-    await page.getByRole('button', { name: 'Agree', exact: true }).click();
-    await page.getByRole('textbox', { name: 'someone@example.com' }).click();
-    await page.getByRole('textbox', { name: 'someone@example.com' }).fill(dataset[0].username);
-    await page.getByRole('button', { name: 'Next' }).click();
-    await page.waitForTimeout(2000);
-    await page.locator('#i0118').fill(dataset[0].password);
-    await page.getByRole('button', { name: 'Sign in' }).click();
-    await page.getByRole('link', { name: ' HTA Medical Benefits (QA1)' }).click();
-    await page.getByRole('link', { name: ' Enrollment 2.0' }).click();
-    await context.storageState({ path: 'state.json' });
-    webContext = await browser.newContext({ storageState: 'state.json' });
+const data =  JSON.parse(JSON.stringify(require("../../utils/PaymentData.json")));
 
-})
+let paymentReviewQueue;
 
-test('Validating various tabs on Payment Review Screen', async () => {
+test.beforeEach(async ({ page }) => {
+    paymentReviewQueue = new POManager(page).getPaymentReviewQueuePage();
+    await paymentReviewQueue.open(process.env.ENRurl);
+});
 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Review Queue', exact: true }).click();
-    await page.getByRole('tab', { name: 'Assigned to Me' }).click();
-    await expect(page.getByRole('tab', { name: 'Assigned to Me' })).toBeVisible();
-    await page.getByRole('tab', { name: 'All Records' }).click();
-    await expect(page.getByRole('tab', { name: 'All Records' })).toBeVisible();
-    await page.getByRole('tab', { name: 'Resolved' }).click();
-    await expect(page.getByRole('tab', { name: 'Resolved' })).toBeVisible();
+test('Validating various tabs on Payment Review Screen', async ({ page }) => {
+
+    await paymentReviewQueue.assignedToMeTab.click();
+    await expect(paymentReviewQueue.assignedToMeTab).toBeVisible();
+    await paymentReviewQueue.allRecordsTab.click();
+    await expect(paymentReviewQueue.allRecordsTab).toBeVisible();
+    await paymentReviewQueue.resolvedTab.click();
+    await expect(paymentReviewQueue.resolvedTab).toBeVisible();
 
 })
 
-test('Validating Payment search by Payment ID on All Records tab', async () => {
+test('Validating Payment search by Payment ID on All Records tab', async ({ page }) => {
 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Review Queue', exact: true }).click();
-    await page.getByRole('tab', { name: 'All Records' }).click();
-    await expect(page.getByRole('tab', { name: 'All Records' })).toBeVisible();
-    await page.getByRole('textbox', { name: 'Enter Payment ID' }).click();
-    await page.getByRole('textbox', { name: 'Enter Payment ID' }).fill(dataset[2].PaymentID);
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.locator('tbody')).toContainText(dataset[2].PaymentID);
-    await page.getByRole('button', { name: 'Reset' }).click();
+    await paymentReviewQueue.allRecordsTab.click();
+    await paymentReviewQueue.searchByPaymentId(data[1].PaymentID);
+    await expect(paymentReviewQueue.resultsTable).toContainText(data[1].PaymentID);
+    await paymentReviewQueue.resetButton.click();
 
 })
 
-test('Validating Payment search by Transaction ID on All Records tab', async () => {
+test('Validating Payment search by Transaction ID on All Records tab', async ({ page }) => {
 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Review Queue', exact: true }).click();
-    await page.getByRole('tab', { name: 'All Records' }).click();
-    await expect(page.getByRole('tab', { name: 'All Records' })).toBeVisible();
-    await page.getByRole('textbox', { name: 'Transaction Number/ID' }).click();
-    await page.getByRole('textbox', { name: 'Transaction Number/ID' }).fill(dataset[2].TransactionID);
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.locator('tbody tr:nth-child(1) td:nth-child(9)')).toContainText(dataset[2].TransactionID);
+    await paymentReviewQueue.allRecordsTab.click();
+    await expect(paymentReviewQueue.allRecordsTab).toBeVisible();
+    await paymentReviewQueue.searchByTransactionId(data[1].TransactionID);
+    await expect(paymentReviewQueue.transactionIdResultCell).toContainText(data[1].TransactionID);
 
 })
 
-test('Validating Exception type dropdown Filter', async () => {
+test('Validating Exception type dropdown Filter', async ({ page }) => {
 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Review Queue', exact: true }).click();
-    await page.getByRole('tab', { name: 'All Records' }).click();
-    await expect(page.getByRole('tab', { name: 'All Records' })).toBeVisible();
-    await page.getByRole('combobox').selectOption('1: 13506');
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.locator('tbody')).toContainText('Defined Month Not Active');
-    await page.getByRole('combobox').selectOption('3: 13502');
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.locator('tbody')).toContainText('No Active Months with Direct Pay');
-    await page.getByRole('combobox').selectOption('4: 13505');
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.locator('tbody')).toContainText('Invalid Period Span on payment');
-    await page.getByRole('combobox').selectOption('5: 13504');
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.locator('tbody')).toContainText('Missing Required Period Span');
-    await page.getByRole('combobox').selectOption('8: 13503');
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.locator('tbody')).toContainText('No Active Coverage');
-    await page.getByRole('combobox').selectOption('9: 11002');
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.locator('tbody')).toContainText('No Matching Member Found');
-    await page.getByRole('combobox').selectOption('10: 13507');
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.locator('tbody')).toContainText('Payment Record Results in Overfunding');
-    await page.getByRole('combobox').selectOption('11: 11001');
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.locator('tbody')).toContainText('Reversed Payment', { timeout: 8000 });
+    await paymentReviewQueue.allRecordsTab.click();
+    await expect(paymentReviewQueue.allRecordsTab).toBeVisible();
+    await paymentReviewQueue.filterByExceptionType('1: 13506');
+    await expect(paymentReviewQueue.resultsTable).toContainText('Defined Month Not Active');
+    await paymentReviewQueue.filterByExceptionType('3: 13502');
+    await expect(paymentReviewQueue.resultsTable).toContainText('No Active Months with Direct Pay');
+    await paymentReviewQueue.filterByExceptionType('4: 13505');
+    await expect(paymentReviewQueue.resultsTable).toContainText('Invalid Period Span on payment');
+    await paymentReviewQueue.filterByExceptionType('5: 13504');
+    await expect(paymentReviewQueue.resultsTable).toContainText('Missing Required Period Span');
+    await paymentReviewQueue.filterByExceptionType('8: 13503');
+    await expect(paymentReviewQueue.resultsTable).toContainText('No Active Coverage');
+    await paymentReviewQueue.filterByExceptionType('9: 11002');
+    await expect(paymentReviewQueue.resultsTable).toContainText('No Matching Member Found');
+    await paymentReviewQueue.filterByExceptionType('10: 13507');
+    await expect(paymentReviewQueue.resultsTable).toContainText('Payment Record Results in Overfunding');
+    await paymentReviewQueue.filterByExceptionType('11: 11001');
+    await expect(paymentReviewQueue.resultsTable).toContainText('Reversed Payment', { timeout: 8000 });
 
 })
 
-test('Validating Action buttons visibility on payments in No Matching Member Found Exception', async () => {
+test('Validating Action buttons visibility on payments in No Matching Member Found Exception', async ({ page }) => {
 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.waitForTimeout(2000);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Review Queue', exact: true }).click();
-    await page.getByRole('tab', { name: 'All Records' }).click();
-    await expect(page.getByRole('tab', { name: 'All Records' })).toBeVisible();
-    await page.getByRole('combobox').selectOption('9: 11002');
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.locator('tbody').first()).toContainText('No Matching Member Found');
-    await page.locator("tbody tr:nth-child(1) td:nth-child(3) a").click();
-    await expect(page.getByRole('button', { name: 'Assign' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Reject' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Reprocess' })).toBeVisible();
+    await paymentReviewQueue.allRecordsTab.click();
+    await expect(paymentReviewQueue.allRecordsTab).toBeVisible();
+    await paymentReviewQueue.filterByExceptionType('9: 11002');
+    await expect(paymentReviewQueue.resultsTable.first()).toContainText('No Matching Member Found');
+    await paymentReviewQueue.firstResultPaymentLink.click();
+    await expect(paymentReviewQueue.assignButton).toBeVisible();
+    await expect(paymentReviewQueue.rejectButton).toBeVisible();
+    await expect(paymentReviewQueue.reprocessButton).toBeVisible();
 })
 
-test('Validating Action buttons visibility on payments in Reversed Payment Exception', async () => {
+test('Validating Action buttons visibility on payments in Reversed Payment Exception', async ({ page }) => {
 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.waitForTimeout(2000);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Review Queue', exact: true }).click();
-    await page.getByRole('tab', { name: 'All Records' }).click();
-    await expect(page.getByRole('tab', { name: 'All Records' })).toBeVisible();
-    await page.getByRole('combobox').selectOption('11: 11001');
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.locator('tbody')).toContainText('Reversed Payment', { timeout: 8000 });
-    await page.locator("tbody tr:nth-child(1) td:nth-child(3) a").click();
-    await expect(page.getByRole('button', { name: 'Assign' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Reject' })).toBeVisible();
+    await paymentReviewQueue.allRecordsTab.click();
+    await expect(paymentReviewQueue.allRecordsTab).toBeVisible();
+    await paymentReviewQueue.filterByExceptionType('11: 11001');
+    await expect(paymentReviewQueue.resultsTable).toContainText('Reversed Payment', { timeout: 8000 });
+    await paymentReviewQueue.firstResultPaymentLink.click();
+    await expect(paymentReviewQueue.assignButton).toBeVisible();
+    await expect(paymentReviewQueue.rejectButton).toBeVisible();
 
 })
 
-test('Validating Action buttons visibility on payments in No Active Coverage Exception', async () => {
+test('Validating Action buttons visibility on payments in No Active Coverage Exception', async ({ page }) => {
 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.waitForTimeout(2000);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Review Queue', exact: true }).click();
-    await page.getByRole('tab', { name: 'All Records' }).click();
-    await expect(page.getByRole('tab', { name: 'All Records' })).toBeVisible();
-    await page.getByRole('combobox').selectOption('8: 13503');
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.locator('tbody')).toContainText('No Active Coverage', { timeout: 8000 });
-    await page.locator("tbody tr:nth-child(1) td:nth-child(3) a").click();
-    await expect(page.getByRole('button', { name: 'Reprocess' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Reject' })).toBeVisible();
+    await paymentReviewQueue.allRecordsTab.click();
+    await expect(paymentReviewQueue.allRecordsTab).toBeVisible();
+    await paymentReviewQueue.filterByExceptionType('8: 13503');
+    await expect(paymentReviewQueue.resultsTable).toContainText('No Active Coverage', { timeout: 8000 });
+    await paymentReviewQueue.firstResultPaymentLink.click();
+    await expect(paymentReviewQueue.reprocessButton).toBeVisible();
+    await expect(paymentReviewQueue.rejectButton).toBeVisible();
 
 })
 
-test('Validating Action buttons visibility on payments in Missing Required Period Span Exception', async () => {
+test('Validating Action buttons visibility on payments in Missing Required Period Span Exception', async ({ page }) => {
 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.waitForTimeout(2000);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Review Queue', exact: true }).click();
-    await page.getByRole('tab', { name: 'All Records' }).click();
-    await expect(page.getByRole('tab', { name: 'All Records' })).toBeVisible();
-    await page.getByRole('combobox').selectOption('5: 13504');
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.locator('tbody')).toContainText('Missing Required Period Span');
-    await page.locator("tbody tr:nth-child(1) td:nth-child(3) a").click();
-    await expect(page.getByRole('button', { name: 'Reprocess' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Reject' })).toBeVisible();
+    await paymentReviewQueue.allRecordsTab.click();
+    await expect(paymentReviewQueue.allRecordsTab).toBeVisible();
+    await paymentReviewQueue.filterByExceptionType('5: 13504');
+    await expect(paymentReviewQueue.resultsTable).toContainText('Missing Required Period Span');
+    await paymentReviewQueue.firstResultPaymentLink.click();
+    await expect(paymentReviewQueue.reprocessButton).toBeVisible();
+    await expect(paymentReviewQueue.rejectButton).toBeVisible();
 
 })
 
-test('Validating Action buttons visibility on payments in Invalid Period Span on payment Exception', async () => {
+test('Validating Action buttons visibility on payments in Invalid Period Span on payment Exception', async ({ page }) => {
 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.waitForTimeout(2000);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Review Queue', exact: true }).click();
-    await page.getByRole('tab', { name: 'All Records' }).click();
-    await expect(page.getByRole('tab', { name: 'All Records' })).toBeVisible();
-    await page.getByRole('combobox').selectOption('4: 13505');
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.locator('tbody')).toContainText('Invalid Period Span on payment');
-    await page.locator("tbody tr:nth-child(1) td:nth-child(3) a").click();
-    await expect(page.getByRole('button', { name: 'Reprocess' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Reject' })).toBeVisible();
+    await paymentReviewQueue.allRecordsTab.click();
+    await expect(paymentReviewQueue.allRecordsTab).toBeVisible();
+    await paymentReviewQueue.filterByExceptionType('4: 13505');
+    await expect(paymentReviewQueue.resultsTable).toContainText('Invalid Period Span on payment');
+    await paymentReviewQueue.firstResultPaymentLink.click();
+    await expect(paymentReviewQueue.reprocessButton).toBeVisible();
+    await expect(paymentReviewQueue.rejectButton).toBeVisible();
 
 })
 
-test('Validating Action buttons visibility on payments in Defined Month Not Active Exception', async () => {
+test('Validating Action buttons visibility on payments in Defined Month Not Active Exception', async ({ page }) => {
 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.waitForTimeout(2000);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Review Queue', exact: true }).click();
-    await page.getByRole('tab', { name: 'All Records' }).click();
-    await expect(page.getByRole('tab', { name: 'All Records' })).toBeVisible();
-    await page.getByRole('combobox').selectOption('1: 13506');
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.locator('tbody')).toContainText('Defined Month Not Active');
-    await page.locator("tbody tr:nth-child(1) td:nth-child(3) a").click();
-    await expect(page.getByRole('button', { name: 'Reprocess' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Reject' })).toBeVisible();
+    await paymentReviewQueue.allRecordsTab.click();
+    await expect(paymentReviewQueue.allRecordsTab).toBeVisible();
+    await paymentReviewQueue.filterByExceptionType('1: 13506');
+    await expect(paymentReviewQueue.resultsTable).toContainText('Defined Month Not Active');
+    await paymentReviewQueue.firstResultPaymentLink.click();
+    await expect(paymentReviewQueue.reprocessButton).toBeVisible();
+    await expect(paymentReviewQueue.rejectButton).toBeVisible();
 
 })
 
-test('Validating Action buttons visibility on payments in Payment Record Results in Overfunding Exception', async () => {
+test('Validating Action buttons visibility on payments in Payment Record Results in Overfunding Exception', async ({ page }) => {
 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.waitForTimeout(2000);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Review Queue', exact: true }).click();
-    await page.getByRole('tab', { name: 'All Records' }).click();
-    await expect(page.getByRole('tab', { name: 'All Records' })).toBeVisible();
-    await page.getByRole('combobox').selectOption('10: 13507');
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.locator('tbody')).toContainText('Payment Record Results in Overfunding');
-    await page.locator("tbody tr:nth-child(1) td:nth-child(3) a").click();
-    await expect(page.getByRole('button', { name: 'Reprocess' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Reject' })).toBeVisible();
+    await paymentReviewQueue.allRecordsTab.click();
+    await expect(paymentReviewQueue.allRecordsTab).toBeVisible();
+    await paymentReviewQueue.filterByExceptionType('10: 13507');
+    await expect(paymentReviewQueue.resultsTable).toContainText('Payment Record Results in Overfunding');
+    await paymentReviewQueue.firstResultPaymentLink.click();
+    await expect(paymentReviewQueue.reprocessButton).toBeVisible();
+    await expect(paymentReviewQueue.rejectButton).toBeVisible();
 
 })
 
-test('Validating Assign Button Functionality', async () => {
+test('Validating Assign Button Functionality', async ({ page }) => {
 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.waitForTimeout(2000);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Review Queue', exact: true }).click();
-    await page.getByRole('tab', { name: 'All Records' }).click();
-    await expect(page.getByRole('tab', { name: 'All Records' })).toBeVisible();
-    await page.getByRole('combobox').selectOption('9: 11002');
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.locator('tbody').first()).toContainText('No Matching Member Found');
-    await page.locator("tbody tr:nth-child(1) td:nth-child(3) a").click();
-    await expect(page.getByRole('button', { name: 'Assign' })).toBeVisible();
-    await page.getByRole('button', { name: 'Assign' }).click();
-    await page.getByRole('dialog').locator('input[type="text"]').click();
-    await page.getByRole('dialog').locator('input[type="text"]').fill(dataset[2].IssuerSubscriberID);
-    await page.locator('textarea').click();
-    await page.locator('textarea').fill('Assign this payment to above member');
-    await page.getByRole('button', { name: 'Save' }).click();
+    await paymentReviewQueue.allRecordsTab.click();
+    await expect(paymentReviewQueue.allRecordsTab).toBeVisible();
+    await paymentReviewQueue.filterByExceptionType('9: 11002');
+    await expect(paymentReviewQueue.resultsTable.first()).toContainText('No Matching Member Found');
+    await paymentReviewQueue.firstResultPaymentLink.click();
+    await expect(paymentReviewQueue.assignButton).toBeVisible();
+    await paymentReviewQueue.assignPayment(data[1].IssuerSubscriberID, 'Assign this payment to above member');
 
 })
 
-test('Validating Reject Button Functionality', async () => {
+test('Validating Reject Button Functionality', async ({ page }) => {
 
-    const page = await webContext.newPage();
-    await page.goto(dataset[0].ENRurl);
-    await page.waitForTimeout(2000);
-    await page.getByRole('button', { name: 'Health Team Advantage Medicare' }).click();
-    await page.getByRole('link', { name: ' Payments' }).click();
-    await page.getByRole('link', { name: 'Review Queue', exact: true }).click();
-    await page.getByRole('tab', { name: 'All Records' }).click();
-    await expect(page.getByRole('tab', { name: 'All Records' })).toBeVisible();
-    await page.getByRole('combobox').selectOption('9: 11002');
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.locator('tbody').first()).toContainText('No Matching Member Found');
-    await page.locator("tbody tr:nth-child(1) td:nth-child(3) a").click();
-    await expect(page.getByRole('button', { name: 'Reject' })).toBeVisible();
-    await page.getByRole('button', { name: 'Reject' }).click();
-    await page.locator('textarea').click();
-    await page.locator('textarea').fill('Reject this payment as no matching member found');
-    await page.getByRole('button', { name: 'Save' }).click();
+    await paymentReviewQueue.allRecordsTab.click();
+    await expect(paymentReviewQueue.allRecordsTab).toBeVisible();
+    await paymentReviewQueue.filterByExceptionType('9: 11002');
+    await expect(paymentReviewQueue.resultsTable.first()).toContainText('No Matching Member Found');
+    await paymentReviewQueue.firstResultPaymentLink.click();
+    await expect(paymentReviewQueue.rejectButton).toBeVisible();
+    await paymentReviewQueue.rejectPayment('Reject this payment as no matching member found');
 
 })

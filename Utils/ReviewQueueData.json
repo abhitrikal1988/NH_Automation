@@ -1,0 +1,23 @@
+[
+
+    {
+        "tags": "Transaction Screen Data",
+        "Transaction_ID": "9058571",
+        "MBI": "4QK2TE5CP60",
+        "Member_ID": "T9808056570",
+        "First_Name": "XBAINISH",
+        "Last_Name": "XFONG-HOM"
+        
+    },
+
+    {
+        "tags": "Exception Screen Data",
+        "Transaction_ID": "9058571",
+        "MBI": "4QK2TE5CP60",
+        "Member_ID": "T9808056570",
+        "First_Name": "XBAINISH",
+        "Last_Name": "XFONG-HOM"
+        
+    }
+  
+]
